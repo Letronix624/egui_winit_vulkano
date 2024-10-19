@@ -17,9 +17,8 @@ use vulkano::{
     buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::{
         allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
-        CommandBufferBeginInfo, CommandBufferInheritanceInfo, CommandBufferLevel,
-        CommandBufferUsage, RecordingCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo,
-        SubpassContents,
+        CommandBufferInheritanceInfo, CommandBufferUsage, RecordingCommandBuffer,
+        RenderPassBeginInfo, SubpassBeginInfo, SubpassContents,
     },
     device::{Device, Queue},
     format::Format,
@@ -311,14 +310,10 @@ impl SimpleGuiPipeline {
         image: Arc<ImageView>,
         gui: &mut Gui,
     ) -> Box<dyn GpuFuture> {
-        let mut builder = RecordingCommandBuffer::new(
+        let mut builder = RecordingCommandBuffer::primary(
             self.command_buffer_allocator.clone(),
             self.queue.queue_family_index(),
-            CommandBufferLevel::Primary,
-            CommandBufferBeginInfo {
-                usage: CommandBufferUsage::OneTimeSubmit,
-                ..Default::default()
-            },
+            CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
 
@@ -344,15 +339,12 @@ impl SimpleGuiPipeline {
             .unwrap();
 
         // Render first draw pass
-        let mut secondary_builder = RecordingCommandBuffer::new(
+        let mut secondary_builder = RecordingCommandBuffer::secondary(
             self.command_buffer_allocator.clone(),
             self.queue.queue_family_index(),
-            CommandBufferLevel::Secondary,
-            CommandBufferBeginInfo {
-                inheritance_info: Some(CommandBufferInheritanceInfo {
-                    render_pass: Some(self.subpass.clone().into()),
-                    ..Default::default()
-                }),
+            CommandBufferUsage::OneTimeSubmit,
+            CommandBufferInheritanceInfo {
+                render_pass: Some(self.subpass.clone().into()),
                 ..Default::default()
             },
         )

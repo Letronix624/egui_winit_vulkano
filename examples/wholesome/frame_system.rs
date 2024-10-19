@@ -16,8 +16,8 @@ use std::sync::Arc;
 use cgmath::Matrix4;
 use vulkano::{
     command_buffer::{
-        CommandBuffer, CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsage,
-        RecordingCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents,
+        CommandBufferUsage, PrimaryAutoCommandBuffer, RecordingCommandBuffer, RenderPassBeginInfo,
+        SecondaryAutoCommandBuffer, SubpassBeginInfo, SubpassContents,
     },
     device::Queue,
     format::Format,
@@ -124,14 +124,10 @@ impl FrameSystem {
             ..Default::default()
         })
         .unwrap();
-        let mut command_buffer_builder = RecordingCommandBuffer::new(
+        let mut command_buffer_builder = RecordingCommandBuffer::primary(
             self.allocators.command_buffers.clone(),
             self.gfx_queue.queue_family_index(),
-            CommandBufferLevel::Primary,
-            CommandBufferBeginInfo {
-                usage: CommandBufferUsage::OneTimeSubmit,
-                ..Default::default()
-            },
+            CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
         command_buffer_builder
@@ -163,7 +159,7 @@ pub struct Frame<'a> {
     num_pass: u8,
     before_main_cb_future: Option<Box<dyn GpuFuture>>,
     framebuffer: Arc<Framebuffer>,
-    recording_command_buffer: Option<RecordingCommandBuffer>,
+    recording_command_buffer: Option<RecordingCommandBuffer<PrimaryAutoCommandBuffer>>,
     #[allow(dead_code)]
     world_to_framebuffer: Matrix4<f32>,
 }
@@ -208,7 +204,7 @@ pub struct DrawPass<'f, 's: 'f> {
 
 impl<'f, 's: 'f> DrawPass<'f, 's> {
     #[inline]
-    pub fn execute(&mut self, command_buffer: Arc<CommandBuffer>) {
+    pub fn execute(&mut self, command_buffer: Arc<SecondaryAutoCommandBuffer>) {
         self.frame
             .recording_command_buffer
             .as_mut()

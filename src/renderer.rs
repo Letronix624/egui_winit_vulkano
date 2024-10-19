@@ -17,10 +17,10 @@ use vulkano::{
         Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer,
     },
     command_buffer::{
-        allocator::StandardCommandBufferAllocator, BufferImageCopy, CommandBuffer,
-        CommandBufferBeginInfo, CommandBufferInheritanceInfo, CommandBufferLevel,
-        CommandBufferUsage, CopyBufferToImageInfo, RecordingCommandBuffer, RenderPassBeginInfo,
-        SubpassBeginInfo, SubpassContents,
+        allocator::StandardCommandBufferAllocator, BufferImageCopy, CommandBufferInheritanceInfo,
+        CommandBufferUsage, CopyBufferToImageInfo, PrimaryAutoCommandBuffer,
+        RecordingCommandBuffer, RenderPassBeginInfo, SecondaryAutoCommandBuffer, SubpassBeginInfo,
+        SubpassContents,
     },
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, layout::DescriptorSetLayout, DescriptorSet,
@@ -381,7 +381,7 @@ impl Renderer {
         delta: &egui::epaint::ImageDelta,
         stage: Subbuffer<[u8]>,
         mapped_stage: &mut [u8],
-        cbb: &mut RecordingCommandBuffer,
+        cbb: &mut RecordingCommandBuffer<PrimaryAutoCommandBuffer>,
     ) {
         // Extract pixel data from egui, writing into our region of the stage buffer.
         let format = match &delta.image {
@@ -500,14 +500,10 @@ impl Renderer {
         let buffer = Subbuffer::new(buffer);
 
         // Shared command buffer for every upload in this batch.
-        let mut cbb = RecordingCommandBuffer::new(
+        let mut cbb = RecordingCommandBuffer::primary(
             self.allocators.command_buffer.clone(),
             self.gfx_queue.queue_family_index(),
-            CommandBufferLevel::Primary,
-            CommandBufferBeginInfo {
-                usage: CommandBufferUsage::OneTimeSubmit,
-                ..Default::default()
-            },
+            CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
 
@@ -571,16 +567,15 @@ impl Renderer {
         }
     }
 
-    fn create_secondary_command_buffer_builder(&self) -> RecordingCommandBuffer {
-        RecordingCommandBuffer::new(
+    fn create_secondary_command_buffer_builder(
+        &self,
+    ) -> RecordingCommandBuffer<SecondaryAutoCommandBuffer> {
+        RecordingCommandBuffer::secondary(
             self.allocators.command_buffer.clone(),
             self.gfx_queue.queue_family_index(),
-            CommandBufferLevel::Secondary,
-            CommandBufferBeginInfo {
-                inheritance_info: Some(CommandBufferInheritanceInfo {
-                    render_pass: Some(self.subpass.clone().into()),
-                    ..Default::default()
-                }),
+            CommandBufferUsage::OneTimeSubmit,
+            CommandBufferInheritanceInfo {
+                render_pass: Some(self.subpass.clone().into()),
                 ..Default::default()
             },
         )
@@ -588,7 +583,10 @@ impl Renderer {
     }
 
     // Starts the rendering pipeline and returns [`RecordingCommandBuffer`] for drawing
-    fn start(&mut self, final_image: Arc<ImageView>) -> (RecordingCommandBuffer, [u32; 2]) {
+    fn start(
+        &mut self,
+        final_image: Arc<ImageView>,
+    ) -> (RecordingCommandBuffer<PrimaryAutoCommandBuffer>, [u32; 2]) {
         // Get dimensions
         let img_dims = final_image.image().extent();
         // Create framebuffer (must be in same order as render pass description in `new`
@@ -603,14 +601,10 @@ impl Renderer {
             FramebufferCreateInfo { attachments: vec![final_image], ..Default::default() },
         )
         .unwrap();
-        let mut command_buffer_builder = RecordingCommandBuffer::new(
+        let mut command_buffer_builder = RecordingCommandBuffer::primary(
             self.allocators.command_buffer.clone(),
             self.gfx_queue.queue_family_index(),
-            CommandBufferLevel::Primary,
-            CommandBufferBeginInfo {
-                usage: CommandBufferUsage::OneTimeSubmit,
-                ..Default::default()
-            },
+            CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
         // Add clear values here for attachments and begin render pass
@@ -661,7 +655,7 @@ impl Renderer {
     // Finishes the rendering pipeline
     fn finish(
         &self,
-        mut command_buffer_builder: RecordingCommandBuffer,
+        mut command_buffer_builder: RecordingCommandBuffer<PrimaryAutoCommandBuffer>,
         before_main_cb_future: Box<dyn GpuFuture>,
     ) -> Box<dyn GpuFuture> {
         // We end render pass
@@ -680,7 +674,7 @@ impl Renderer {
         textures_delta: &TexturesDelta,
         scale_factor: f32,
         framebuffer_dimensions: [u32; 2],
-    ) -> Arc<CommandBuffer> {
+    ) -> Arc<SecondaryAutoCommandBuffer> {
         self.update_textures(&textures_delta.set);
         let mut builder = self.create_secondary_command_buffer_builder();
         self.draw_egui(scale_factor, clipped_meshes, framebuffer_dimensions, &mut builder);
@@ -770,7 +764,7 @@ impl Renderer {
         scale_factor: f32,
         clipped_meshes: &[ClippedPrimitive],
         framebuffer_dimensions: [u32; 2],
-        builder: &mut RecordingCommandBuffer,
+        builder: &mut RecordingCommandBuffer<SecondaryAutoCommandBuffer>,
     ) {
         let push_constants = vs::PushConstants {
             screen_size: [
@@ -980,7 +974,7 @@ impl Renderer {
 ///
 /// See the `triangle` demo source for a detailed usage example.
 pub struct CallbackContext<'a> {
-    pub builder: &'a mut RecordingCommandBuffer,
+    pub builder: &'a mut RecordingCommandBuffer<SecondaryAutoCommandBuffer>,
     pub resources: RenderResources<'a>,
 }
 

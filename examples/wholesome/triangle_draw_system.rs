@@ -16,8 +16,8 @@ use std::sync::Arc;
 use vulkano::{
     buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::{
-        allocator::StandardCommandBufferAllocator, CommandBuffer, CommandBufferBeginInfo,
-        CommandBufferInheritanceInfo, RecordingCommandBuffer,
+        allocator::StandardCommandBufferAllocator, CommandBufferInheritanceInfo,
+        CommandBufferUsage, RecordingCommandBuffer, SecondaryAutoCommandBuffer,
     },
     device::Queue,
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
@@ -94,21 +94,21 @@ impl TriangleDrawSystem {
             .unwrap();
 
             GraphicsPipeline::new(gfx_queue.device().clone(), None, GraphicsPipelineCreateInfo {
-                stages: stages.into_iter().collect(),
-                vertex_input_state: Some(vertex_input_state),
-                input_assembly_state: Some(InputAssemblyState::default()),
-                viewport_state: Some(ViewportState::default()),
-                rasterization_state: Some(RasterizationState::default()),
-                multisample_state: Some(MultisampleState::default()),
-                color_blend_state: Some(ColorBlendState::with_attachment_states(
-                    subpass.num_color_attachments(),
-                    ColorBlendAttachmentState::default(),
-                )),
-                depth_stencil_state: Some(DepthStencilState::default()),
-                dynamic_state: [DynamicState::Viewport].into_iter().collect(),
-                subpass: Some(subpass.clone().into()),
-                ..GraphicsPipelineCreateInfo::layout(layout)
-            })
+                    stages: stages.into_iter().collect(),
+                    vertex_input_state: Some(vertex_input_state),
+                    input_assembly_state: Some(InputAssemblyState::default()),
+                    viewport_state: Some(ViewportState::default()),
+                    rasterization_state: Some(RasterizationState::default()),
+                    multisample_state: Some(MultisampleState::default()),
+                    color_blend_state: Some(ColorBlendState::with_attachment_states(
+                        subpass.num_color_attachments(),
+                        ColorBlendAttachmentState::default(),
+                    )),
+                    depth_stencil_state: Some(DepthStencilState::default()),
+                    dynamic_state: [DynamicState::Viewport].into_iter().collect(),
+                    subpass: Some(subpass.clone().into()),
+                    ..GraphicsPipelineCreateInfo::layout(layout)
+                })
             .unwrap()
         };
 
@@ -121,16 +121,13 @@ impl TriangleDrawSystem {
         }
     }
 
-    pub fn draw(&self, viewport_dimensions: [u32; 2]) -> Arc<CommandBuffer> {
-        let mut builder = RecordingCommandBuffer::new(
+    pub fn draw(&self, viewport_dimensions: [u32; 2]) -> Arc<SecondaryAutoCommandBuffer> {
+        let mut builder = RecordingCommandBuffer::secondary(
             self.command_buffer_allocator.clone(),
             self.gfx_queue.queue_family_index(),
-            vulkano::command_buffer::CommandBufferLevel::Secondary,
-            CommandBufferBeginInfo {
-                inheritance_info: Some(CommandBufferInheritanceInfo {
-                    render_pass: Some(self.subpass.clone().into()),
-                    ..Default::default()
-                }),
+            CommandBufferUsage::OneTimeSubmit,
+            CommandBufferInheritanceInfo {
+                render_pass: Some(self.subpass.clone().into()),
                 ..Default::default()
             },
         )

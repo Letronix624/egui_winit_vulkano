@@ -521,7 +521,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.5",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -2306,7 +2306,7 @@ dependencies = [
 [[package]]
 name = "vulkano"
 version = "0.34.0"
-source = "git+https://github.com/vulkano-rs/vulkano.git#a2704689603bd614186edd17c73779fd1f401548"
+source = "git+https://github.com/vulkano-rs/vulkano.git#1f935e38781d3e2c7e7a3a77d788d03d9de8ee06"
 dependencies = [
  "ahash",
  "ash 0.38.0+1.3.281",
@@ -2366,7 +2366,7 @@ dependencies = [
 [[package]]
 name = "vulkano-macros"
 version = "0.34.0"
-source = "git+https://github.com/vulkano-rs/vulkano.git#a2704689603bd614186edd17c73779fd1f401548"
+source = "git+https://github.com/vulkano-rs/vulkano.git#1f935e38781d3e2c7e7a3a77d788d03d9de8ee06"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -2392,7 +2392,7 @@ dependencies = [
 [[package]]
 name = "vulkano-util"
 version = "0.34.0"
-source = "git+https://github.com/vulkano-rs/vulkano.git#a2704689603bd614186edd17c73779fd1f401548"
+source = "git+https://github.com/vulkano-rs/vulkano.git#1f935e38781d3e2c7e7a3a77d788d03d9de8ee06"
 dependencies = [
  "ahash",
  "vulkano 0.34.0",
